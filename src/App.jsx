@@ -1,36 +1,48 @@
-import { useEffect, useState } from 'react'
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  useNavigate
-} from 'react-router-dom'
-import { createClient } from '@supabase/supabase-js'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { supabase } from "./supabase"
+import Login from "./Login"
 
-import Login from './Login'
-import Home from './Home'
+function Home() {
+  const [user, setUser] = useState(null)
 
-// Ініціалізація Supabase
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user)
+    })
+  }, [])
 
-// ----------------------
-// ProtectedRoute
-// ----------------------
+  const logout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = "/login"
+  }
+
+  return (
+    <div style={{ textAlign: "center", marginTop: "100px" }}>
+      <h1>Головна сторінка</h1>
+      {user && (
+        <>
+          <p>{user.email}</p>
+          <button onClick={logout}>Вийти</button>
+        </>
+      )}
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }) {
   const [session, setSession] = useState(undefined)
 
   useEffect(() => {
-    // поточна сесія
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-
-    // слухач змін авторизації
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
     })
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session)
+      }
+    )
 
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -40,31 +52,6 @@ function ProtectedRoute({ children }) {
   return session ? children : <Navigate to="/login" />
 }
 
-// ----------------------
-// GuestRoute
-// ----------------------
-function GuestRoute({ children }) {
-  const [session, setSession] = useState(undefined)
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [])
-
-  if (session === undefined) return <p>Loading...</p>
-
-  return session ? <Navigate to="/" /> : children
-}
-
-
-// ----------------------
-// App
-// ----------------------
 export default function App() {
   return (
     <BrowserRouter>
@@ -77,15 +64,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/login"
-          element={
-            <GuestRoute>
-              <Login />
-            </GuestRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="/login" element={<Login />} />
       </Routes>
     </BrowserRouter>
   )

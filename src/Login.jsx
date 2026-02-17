@@ -1,11 +1,23 @@
-import { supabase } from './supabase'
+import { useEffect } from "react"
+import { supabase } from "./supabase"
+import { useNavigate } from "react-router-dom"
 
 export default function Login() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        navigate("/")
+      }
+    })
+  }, [navigate])
+
   const login = async () => {
     await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
-        redirectTo: 'http://localhost:5173'
+        redirectTo: "http://localhost:5173/"
       }
     })
   }
